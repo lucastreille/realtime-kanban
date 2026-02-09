@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kanban Temps Réel</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <h1>Kanban temps réel</h1>
+
+  <div class="row">
+    <input id="pseudo" placeholder="pseudo" value="lucas" />
+    <input id="board" placeholder="boardId" value="team1" />
+    <button id="connect">Connect</button>
+    <button id="disconnect">Disconnect</button>
+    <span id="status">offline</span>
+  </div>
+
+  <div class="row">
+    <input id="title" placeholder="Nouvelle tâche" />
+    <button id="add">Ajouter</button>
+    <button id="leave">Quitter le board</button>
+  </div>
+
+  <div class="kanban">
+    <div class="col"><h3>Todo</h3><div id="todo"></div></div>
+    <div class="col"><h3>Doing</h3><div id="doing"></div></div>
+    <div class="col"><h3>Done</h3><div id="done"></div></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 20px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+#status {
+  font-weight: bold;
+}
+
+.kanban {
+  display: flex;
+  gap: 20px;
+}
+
+.col {
+  border: 1px solid #ccc;
+  padding: 10px;
+  width: 220px;
+}
+
+.task {
+  border: 1px solid #999;
+  padding: 6px;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
