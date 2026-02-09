@@ -12,6 +12,7 @@ function connect() {
   boardId = $("board").value;
 
   ws = new WebSocket("ws://localhost:3000");
+  // Pour connexion à une autre machine : new WebSocket("ws://10.3.201.190:3000");
 
   ws.onopen = () => {
 
@@ -120,7 +121,7 @@ function render() {
 function addTask() {
 
   const title = $("title").value.trim();
-  
+
   if (!title) 
   {
     return;
