@@ -1,0 +1,143 @@
+// Prisma Schema for Review Funnel SaaS
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Authentication Models (NextAuth.js compatible)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  accounts      Account[]
+  sessions      Session[]
+  businesses    Business[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Business Models
+model Business {
+  id              String    @id @default(cuid())
+  name            String
+  email           String
+  phone           String?
+  logoUrl         String?
+  googleReviewUrl String
+  tripadvisorUrl  String?
+  primaryColor    String    @default("#8B7355")
+  accentColor     String    @default("#C9A86C")
+  language        String    @default("fr")
+  
+  // Owner relationship
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Related data
+  qrCodes         QRCode[]
+  reviews         Review[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model QRCode {
+  id              String    @id @default(cuid())
+  businessId      String
+  name            String?   // e.g., "Table 5", "Main Entrance"
+  qrImageUrl      String?
+  landingPageSlug String    @unique // URL friendly: /r/abc123
+  isActive        Boolean   @default(true)
+  scansCount      Int       @default(0)
+  
+  business        Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  reviews         Review[]
+  
+  createdAt       DateTime  @default(now())
+
+  @@index([businessId])
+  @@index([landingPageSlug])
+}
+
+model Review {
+  id            String      @id @default(cuid())
+  qrCodeId      String
+  businessId    String
+  rating        Int         // 1-5 stars
+  
+  // Action taken by customer
+  actionType    ActionType  // What the customer did after rating
+  
+  // Private feedback (for rating < 3)
+  feedbackText  String?
+  customerEmail String?
+  isRead        Boolean     @default(false)
+  
+  // Metadata
+  userAgent     String?
+  ipAddress     String?
+  language      String      @default("fr")
+  
+  qrCode        QRCode      @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  business      Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime    @default(now())
+
+  @@index([businessId])
+  @@index([qrCodeId])
+  @@index([createdAt(sort: Desc)])
+}
+
+enum ActionType {
+  REDIRECTED_GOOGLE
+  REDIRECTED_TRIPADVISOR
+  FEEDBACK_SUBMITTED
+  REVIEW_ANYWAY
+  ABANDONED
+}
