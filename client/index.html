@@ -1,12 +1,23 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
   <meta charset="UTF-8" />
   <title>Kanban Temps Réel</title>
-  <link rel="stylesheet" href="/style.css" />
+  <!-- Le CSS est importé via main.js (Vite) -->
 </head>
+
 <body>
   <h1>Kanban temps réel</h1>
+
+  <!-- Bannière de conflit (cachée par défaut) -->
+  <div id="conflict-bar" class="conflict-bar hidden">
+    <span>⚠️ Cette tâche a été modifiée par un autre utilisateur.</span>
+    <div class="conflict-actions">
+      <button id="conflict-cancel">Annuler</button>
+      <button id="conflict-confirm">Confirmer</button>
+    </div>
+  </div>
 
   <div class="row">
     <input id="pseudo" placeholder="pseudo" value="lucas" />
@@ -23,11 +34,36 @@
   </div>
 
   <div class="kanban">
-    <div class="col"><h3>Todo</h3><div id="todo"></div></div>
-    <div class="col"><h3>Doing</h3><div id="doing"></div></div>
-    <div class="col"><h3>Done</h3><div id="done"></div></div>
+    <div class="col">
+      <h3>Todo</h3>
+      <div id="todo"></div>
+    </div>
+    <div class="col">
+      <h3>Doing</h3>
+      <div id="doing"></div>
+    </div>
+    <div class="col">
+      <h3>Done</h3>
+      <div id="done"></div>
+    </div>
+  </div>
+
+  <!-- Modale d'édition -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Modifier la tâche</h3>
+      <label>Titre</label>
+      <input id="edit-title" type="text" />
+      <label>Description</label>
+      <textarea id="edit-desc" rows="3"></textarea>
+      <div class="modal-buttons">
+        <button id="edit-cancel">Annuler</button>
+        <button id="edit-save">Valider</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/src/main.js"></script>
 </body>
+
 </html>
