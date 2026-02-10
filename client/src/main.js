@@ -150,9 +150,9 @@ function render() {
     counts[t.status]++;
 
     const card = document.createElement("div");
-    card.className = "task";
+    card.className = "task task-" + t.status;
 
-    // Titre de la tâche
+    // Titre
     const title = document.createElement("div");
     title.className = "task-title";
     title.textContent = t.title;
@@ -162,34 +162,38 @@ function render() {
     desc.className = "task-desc";
     desc.textContent = t.description || "";
 
-    // Info modif
+    // Meta : version + info
+    const meta = document.createElement("div");
+    meta.className = "task-meta";
+
     if (t._lastEditBy) {
-      const info = document.createElement("div");
+      const info = document.createElement("span");
       info.className = "task-info";
       info.textContent = `${t._lastAction || "Modifié"} par ${t._lastEditBy}`;
-      card.appendChild(info);
+      meta.appendChild(info);
     }
 
-    // Version
-    const version = document.createElement("div");
+    const version = document.createElement("span");
     version.className = "task-version";
-    version.textContent = `v${t.version}`;
+    version.textContent = "v" + t.version;
+    meta.appendChild(version);
 
     // Actions
     const actions = document.createElement("div");
     actions.className = "task-actions";
 
     const editBtn = document.createElement("button");
-    editBtn.textContent = "\u270F\uFE0F Éditer";
+    editBtn.textContent = "Éditer";
     editBtn.className = "btn-edit";
     editBtn.onclick = () => openModal(t);
 
+    const statusLabels = { todo: "À faire", doing: "En cours", done: "Terminé" };
     const select = document.createElement("select");
     select.className = "status-select";
     ["todo", "doing", "done"].forEach(status => {
       const option = document.createElement("option");
       option.value = status;
-      option.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+      option.textContent = statusLabels[status];
       if (status === t.status) option.selected = true;
       select.appendChild(option);
     });
@@ -200,7 +204,7 @@ function render() {
 
     card.appendChild(title);
     if (t.description) card.appendChild(desc);
-    card.appendChild(version); // Je le remets dans le bon ordre si besoin, peu importe
+    card.appendChild(meta);
     card.appendChild(actions);
 
     $(t.status).appendChild(card);
