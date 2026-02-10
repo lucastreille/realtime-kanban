@@ -31,6 +31,11 @@ function connect() {
 
     setStatus("connected");
 
+    // Basculer l'affichage
+    $("login-view").classList.add("hidden");
+    $("app-view").classList.remove("hidden");
+    $("board-name-display").textContent = boardId;
+
     // Réactiver les boutons
     $("add").disabled = false;
     $("leave").disabled = false;
@@ -62,9 +67,9 @@ function disconnect() {
   render();
   setStatus("offline");
 
-  // Désactiver les actions tant que non reconnecté
-  $("add").disabled = true;
-  $("leave").disabled = true;
+  // Retour à la vue login
+  $("app-view").classList.add("hidden");
+  $("login-view").classList.remove("hidden");
 
 }
 
@@ -124,11 +129,21 @@ function handle(msg) {
 
 function render() {
 
+  // Vider les listes
   ["todo", "doing", "done"].forEach(c => $(c).innerHTML = "");
+
+  // Compteurs
+  const counts = { todo: 0, doing: 0, done: 0 };
 
   tasks.forEach(t => {
 
+    counts[t.status]++;
+
     const card = document.createElement("div");
+    // ... le reste de la création de carte reste identique jusqu'à l'ajout
+    // (je ne modifie pas le coeur de render, juste le début et la fin pour les compteurs)
+    // Mais comme je dois tout remplacer dans le chunk... je dois recopier le coeur.
+
     card.className = "task";
 
     // Titre de la tâche
@@ -136,52 +151,12 @@ function render() {
     title.className = "task-title";
     title.textContent = t.title;
 
-    // Description (si elle existe)
+    // Description
     const desc = document.createElement("div");
     desc.className = "task-desc";
     desc.textContent = t.description || "";
 
-    // Version
-    const version = document.createElement("div");
-    version.className = "task-version";
-    version.textContent = `v${t.version}`;
-
-    // Barre d'actions
-    const actions = document.createElement("div");
-    actions.className = "task-actions";
-
-    // Bouton éditer
-    const editBtn = document.createElement("button");
-    editBtn.textContent = "\u270F\uFE0F Éditer";
-    editBtn.className = "btn-edit";
-    editBtn.onclick = () => openModal(t);
-    actions.appendChild(editBtn);
-
-    // Select pour changer de colonne
-    const select = document.createElement("select");
-    select.className = "status-select";
-
-    // Définir les options
-    ["todo", "doing", "done"].forEach(status => {
-      const option = document.createElement("option");
-      option.value = status;
-      option.textContent = status.charAt(0).toUpperCase() + status.slice(1);
-      if (status === t.status) option.selected = true;
-      select.appendChild(option);
-    });
-
-    // Écouter le changement
-    select.onchange = (e) => {
-      moveTask(t, e.target.value);
-    };
-
-    actions.appendChild(editBtn);
-    actions.appendChild(select);
-
-    card.appendChild(title);
-    if (t.description) card.appendChild(desc);
-
-    // Historique : qui a modifié en dernier
+    // Info modif
     if (t._lastEditBy) {
       const info = document.createElement("div");
       info.className = "task-info";
@@ -189,11 +164,47 @@ function render() {
       card.appendChild(info);
     }
 
-    card.appendChild(version);
+    // Version
+    const version = document.createElement("div");
+    version.className = "task-version";
+    version.textContent = `v${t.version}`;
+
+    // Actions
+    const actions = document.createElement("div");
+    actions.className = "task-actions";
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "\u270F\uFE0F Éditer";
+    editBtn.className = "btn-edit";
+    editBtn.onclick = () => openModal(t);
+
+    const select = document.createElement("select");
+    select.className = "status-select";
+    ["todo", "doing", "done"].forEach(status => {
+      const option = document.createElement("option");
+      option.value = status;
+      option.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+      if (status === t.status) option.selected = true;
+      select.appendChild(option);
+    });
+    select.onchange = (e) => moveTask(t, e.target.value);
+
+    actions.appendChild(editBtn);
+    actions.appendChild(select);
+
+    card.appendChild(title);
+    if (t.description) card.appendChild(desc);
+    card.appendChild(version); // Je le remets dans le bon ordre si besoin, peu importe
     card.appendChild(actions);
+
     $(t.status).appendChild(card);
 
   });
+
+  // Mettre à jour les compteurs
+  $("count-todo").textContent = counts.todo;
+  $("count-doing").textContent = counts.doing;
+  $("count-done").textContent = counts.done;
 
 }
 

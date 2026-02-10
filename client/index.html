@@ -8,43 +8,67 @@
 </head>
 
 <body>
-  <h1>Kanban temps réel</h1>
+  <!-- Vue Connexion -->
+  <div id="login-view" class="login-container">
+    <div class="login-card">
+      <h1>Kanban App</h1>
+      <p class="subtitle">Entrez votre pseudo et le nom du board</p>
 
-  <!-- Bannière de conflit (cachée par défaut) -->
-  <div id="conflict-bar" class="conflict-bar hidden">
-    <span>⚠️ Cette tâche a été modifiée par un autre utilisateur.</span>
-    <div class="conflict-actions">
-      <button id="conflict-cancel">Annuler</button>
-      <button id="conflict-confirm">Confirmer</button>
+      <div class="form-group">
+        <label>Pseudo</label>
+        <input id="pseudo" placeholder="Ex: Lucas" value="Lucas" />
+      </div>
+
+      <div class="form-group">
+        <label>Board ID</label>
+        <input id="board" placeholder="Ex: team1" value="team1" />
+      </div>
+
+      <button id="connect" class="btn-primary">Rejoindre</button>
+      <div id="login-error" class="error-msg"></div>
     </div>
   </div>
 
-  <div class="row">
-    <input id="pseudo" placeholder="pseudo" value="lucas" />
-    <input id="board" placeholder="boardId" value="team1" />
-    <button id="connect">Connect</button>
-    <button id="disconnect">Disconnect</button>
-    <span id="status">offline</span>
-  </div>
+  <!-- Vue Application (Kanban) -->
+  <div id="app-view" class="hidden">
+    <header class="app-header">
+      <h1>Kanban <span id="board-name-display"></span></h1>
+      <div class="header-controls">
+        <span id="status" class="status-badge">offline</span>
+        <button id="disconnect" class="btn-secondary">Déconnexion</button>
+      </div>
+    </header>
 
-  <div class="row">
-    <input id="title" placeholder="Nouvelle tâche" />
-    <button id="add">Ajouter</button>
-    <button id="leave">Quitter le board</button>
-  </div>
+    <!-- Bannière de conflit (cachée par défaut) -->
+    <div id="conflict-bar" class="conflict-bar hidden">
+      <span>⚠️ Cette tâche a été modifiée par un autre utilisateur.</span>
+      <div class="conflict-actions">
+        <button id="conflict-cancel">Annuler</button>
+        <button id="conflict-confirm">Confirmer</button>
+      </div>
+    </div>
 
-  <div class="kanban">
-    <div class="col">
-      <h3>Todo</h3>
-      <div id="todo"></div>
+    <div class="toolbar">
+      <div class="add-task-group">
+        <input id="title" placeholder="Nouvelle tâche..." />
+        <button id="add" class="btn-primary">Ajouter</button>
+      </div>
+      <button id="leave" class="btn-text">Quitter le board</button>
     </div>
-    <div class="col">
-      <h3>Doing</h3>
-      <div id="doing"></div>
-    </div>
-    <div class="col">
-      <h3>Done</h3>
-      <div id="done"></div>
+
+    <div class="kanban">
+      <div class="col">
+        <h3>À faire <span id="count-todo" class="count">0</span></h3>
+        <div id="todo" class="task-list"></div>
+      </div>
+      <div class="col">
+        <h3>En cours <span id="count-doing" class="count">0</span></h3>
+        <div id="doing" class="task-list"></div>
+      </div>
+      <div class="col">
+        <h3>Terminé <span id="count-done" class="count">0</span></h3>
+        <div id="done" class="task-list"></div>
+      </div>
     </div>
   </div>
 
