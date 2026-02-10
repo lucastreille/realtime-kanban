@@ -195,6 +195,18 @@ button {
   font-size: 0.95rem;
 }
 
+.board-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #5e6c84;
+}
+
+.board-switch label {
+  font-weight: 600;
+}
+
 .btn-text {
   background: none;
   border: none;

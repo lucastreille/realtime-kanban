@@ -6,6 +6,7 @@ let pseudo;
 const tasks = new Map();
 let editingTask = null;
 let conflictData = null;
+const knownBoards = new Set();
 
 const $ = (id) => document.getElementById(id);
 
@@ -24,7 +25,8 @@ function connect() {
   pseudo = $("pseudo").value;
   boardId = $("board").value;
 
-  ws = new WebSocket("ws://localhost:3000");
+  ws = new WebSocket("ws://10.101.29.136:3000");
+
   // Pour connexion à une autre machine : new WebSocket("ws://10.3.201.190:3000");
 
   ws.onopen = () => {
@@ -34,22 +36,16 @@ function connect() {
     // Basculer l'affichage
     $("login-view").classList.add("hidden");
     $("app-view").classList.remove("hidden");
-    $("board-name-display").textContent = boardId;
 
-    // Réactiver les boutons
     $("add").disabled = false;
-    $("leave").disabled = false;
 
     ws.send(JSON.stringify({
       type: "auth:hello",
-      data: {
-        pseudo
-      }
+      data: { pseudo }
     }));
 
-    ws.send(JSON.stringify({
-      type: "board:join", data: { boardId }
-    }));
+    // Rejoindre le board
+    switchBoard(boardId);
 
   };
 
@@ -73,16 +69,30 @@ function disconnect() {
 
 }
 
-function leaveBoard() {
-
-  // Rejoindre un board vide pour ne plus recevoir d'événements
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: "board:join", data: { boardId: "__none__" } }));
-  }
+// Changer de board
+function switchBoard(newBoardId) {
+  boardId = newBoardId;
+  knownBoards.add(boardId);
+  $("board-name-display").textContent = boardId;
 
   tasks.clear();
   render();
+  updateBoardSelect();
 
+  ws.send(JSON.stringify({ type: "board:join", data: { boardId } }));
+}
+
+// Mettre à jour le select des boards
+function updateBoardSelect() {
+  const sel = $("board-select");
+  sel.innerHTML = "";
+  knownBoards.forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b;
+    opt.textContent = b;
+    if (b === boardId) opt.selected = true;
+    sel.appendChild(opt);
+  });
 }
 
 function handle(msg) {
@@ -140,10 +150,6 @@ function render() {
     counts[t.status]++;
 
     const card = document.createElement("div");
-    // ... le reste de la création de carte reste identique jusqu'à l'ajout
-    // (je ne modifie pas le coeur de render, juste le début et la fin pour les compteurs)
-    // Mais comme je dois tout remplacer dans le chunk... je dois recopier le coeur.
-
     card.className = "task";
 
     // Titre de la tâche
@@ -319,9 +325,16 @@ function cancelConflict() {
   hideConflictBar();
 }
 
+// Changement de board via le select
+$("board-select").onchange = (e) => {
+  const newId = e.target.value;
+  if (newId && newId !== boardId) {
+    switchBoard(newId);
+  }
+};
+
 $("connect").onclick = connect;
 $("disconnect").onclick = disconnect;
-$("leave").onclick = leaveBoard;
 $("add").onclick = addTask;
 $("edit-save").onclick = saveEdit;
 $("edit-cancel").onclick = closeModal;
