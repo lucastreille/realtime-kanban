@@ -230,7 +230,7 @@ function handle(msg) {
     window.toastManager.warning(
       "Conflit détecté ! Une autre personne a modifié cette tâche",
       {
-        duration: 0, 
+        duration: 0,
         actions: [
           { label: "Annuler", action: "cancel_conflict" },
           { label: "Forcer", action: "confirm_conflict", primary: true },
@@ -434,6 +434,8 @@ $("modal").onclick = (e) => {
 };
 
 $("modal-close").onclick = closeModal;
+$("edit-save").onclick = saveEdit;
+$("edit-cancel").onclick = closeModal;
 
 function saveEdit() {
   if (!editingTask) return;
