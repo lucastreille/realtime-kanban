@@ -62,8 +62,6 @@ function canDeleteTask(socketState, task) {
 }
 
 module.exports = {
-  isValidToken,
-  getRoleFromToken,
   isValidPseudo,
   sanitizePseudo,
   canAccessBoard,

@@ -21,9 +21,14 @@ function removeUserToken(token) {
   userTokens.delete(token);
 }
 
+function getRoleFromToken(token) {
+  return isUserToken(token) ? "user" : null;
+}
+
 module.exports = {
   generateUserToken,
   getPseudoByToken,
   isUserToken,
   removeUserToken,
+  getRoleFromToken,
 };

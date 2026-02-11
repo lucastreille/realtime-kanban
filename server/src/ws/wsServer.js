@@ -9,14 +9,16 @@ const {
 } = require("./rateLimit");
 const { logger, errorManager } = require("../utils/errorManager");
 const {
-  isValidToken,
-  getRoleFromToken,
   isValidPseudo,
   sanitizePseudo,
   canAccessBoard,
   canCreateTask,
   canUpdateTask,
   canDeleteTask,
+} = require("./auth");
+const {
+  isValidToken,
+  getRoleFromToken,
   isUserToken,
   generateUserToken,
   getPseudoByToken,
@@ -154,7 +156,7 @@ function startWs(httpServer)
         let pseudo = sanitizePseudo(data.pseudo);
         let isNewToken = false;
 
-        
+
         if (token) {
           if (isUserToken(token)) {
             
@@ -174,7 +176,7 @@ function startWs(httpServer)
         }
 
         socketState.pseudo = pseudo;
-        
+
         const validRoles = ["admin", "user"];
         if (data.role && validRoles.includes(data.role)) {
           socketState.role = data.role;
@@ -451,7 +453,7 @@ function startWs(httpServer)
           return;
         }
 
-        
+
         if (!canDeleteTask(socketState, task)) {
           sendError(
             ws,
@@ -506,10 +508,10 @@ function startWs(httpServer)
     ws.on("close", () => {
       const socketState = state.get(ws);
 
-      
+
       errorManager.unregisterWebSocket(ws);
 
-      
+
       cleanupRateLimit(ws);
 
       if (socketState?.boardId) {
@@ -526,7 +528,7 @@ function startWs(httpServer)
         leaveRoom(ws, socketState.boardId);
       }
 
-      
+
       if (socketState?.pseudo) {
         logger.info("User disconnected", {
           pseudo: socketState.pseudo,
