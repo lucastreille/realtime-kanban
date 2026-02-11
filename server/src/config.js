@@ -19,13 +19,13 @@ const validTokens = parseTokenList(process.env.VALID_TOKENS, [
 module.exports = {
   port: process.env.PORT || 3000,
 
-  maxMessageSize: 100,
+  maxMessageSize: 2048,
   maxBoardsTotal: 100,
   maxTasksPerBoard: 1000,
 
   rateLimit: {
-    maxMessagesPerSecond: 5,
-    maxMessagesPerMinute: 10,
+    maxMessagesPerSecond: 250,
+    maxMessagesPerMinute: 10000,
     windowMs: 1000,
   },
 
