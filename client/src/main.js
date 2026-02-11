@@ -122,6 +122,8 @@ function switchBoard(newBoardId) {
   knownBoards.add(boardId);
   $("board-name-display").textContent = boardId;
 
+  window.cursorManager.clearAllCursors();
+  
   tasks.clear();
   render();
   updateBoardSelect();
