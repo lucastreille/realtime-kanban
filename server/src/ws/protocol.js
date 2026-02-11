@@ -60,7 +60,24 @@ const taskUpdate = z.object({
 
 });
 
-const schemas = [authHello, boardJoin, taskCreate, taskUpdate];
+const taskDelete = z.object({
+  type: z.literal("task:delete"),
+  data: z.object({
+    boardId: z.string().min(1).max(config.maxBoardIdLength).regex(config.boardIdPattern),
+    taskId: z.string().min(1)
+  })
+});
+
+const cursorMove = z.object({
+  type: z.literal("cursor:move"),
+  data: z.object({
+    pseudo: z.string().min(1).max(50),
+    x: z.number().int().min(0).max(10000),
+    y: z.number().int().min(0).max(10000)
+  })
+});
+
+const schemas = [authHello, boardJoin, taskCreate, taskUpdate, taskDelete, cursorMove];
 
 function parse(raw) {
 

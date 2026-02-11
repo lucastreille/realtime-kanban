@@ -1,5 +1,7 @@
 import './style.css';
 import "./toastManager.js";
+import './cursorManager.js';
+import './cursor.css';
 
 let ws;
 let boardId;
@@ -75,6 +77,9 @@ function connect() {
     // Rejoindre le board
     switchBoard(boardId);
 
+    // Partage de curseur
+    window.cursorManager.sendCursorPosition(ws, pseudo);
+
   };
 
   ws.onclose = (event) => {
@@ -102,6 +107,8 @@ function disconnect() {
   tasks.clear();
   render();
   setStatus("offline");
+
+  window.cursorManager.clearAllCursors();
 
   // Retour à la vue login
   $("app-view").classList.add("hidden");
@@ -138,6 +145,21 @@ function updateBoardSelect() {
 function handle(msg) {
   if (msg.type === "error" || msg.type === "system:error") {
     window.toastManager.showSystemError(msg.data);
+    return;
+  }
+
+  // Mouvements de curseur
+  if (msg.type === "cursor:move") {
+    // Ne pas afficher son propre curseur
+    if (msg.data.pseudo !== pseudo) {
+      window.cursorManager.handleCursorMove(msg.data);
+    }
+    return;
+  }
+
+  // Déconnexion d'un utilisateur
+  if (msg.type === "user:left") {
+    window.cursorManager.removeCursor(msg.data.pseudo);
     return;
   }
 

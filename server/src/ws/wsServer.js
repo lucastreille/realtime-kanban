@@ -156,7 +156,7 @@ function startWs(httpServer)
         let pseudo = sanitizePseudo(data.pseudo);
         let isNewToken = false;
 
-
+        
         if (token) {
           if (isUserToken(token)) {
             
@@ -176,7 +176,7 @@ function startWs(httpServer)
         }
 
         socketState.pseudo = pseudo;
-
+        
         const validRoles = ["admin", "user"];
         if (data.role && validRoles.includes(data.role)) {
           socketState.role = data.role;
@@ -453,7 +453,7 @@ function startWs(httpServer)
           return;
         }
 
-
+        
         if (!canDeleteTask(socketState, task)) {
           sendError(
             ws,
@@ -495,6 +495,25 @@ function startWs(httpServer)
         return;
       }
 
+      // Mouvements de curseur
+      if (type === "cursor:move") {
+        
+        // Broadcaster la position du curseur aux autres utilisateurs du board
+        if (socketState.boardId) {
+          broadcast(socketState.boardId, {
+            type: "cursor:move",
+            data: {
+              pseudo: socketState.pseudo,
+              x: data.x,
+              y: data.y,
+              ts: Date.now()
+            }
+          });
+        }
+        return;
+
+      }
+
       sendError(
         ws,
         ErrorTypes.INVALID_SCHEMA,
@@ -508,10 +527,10 @@ function startWs(httpServer)
     ws.on("close", () => {
       const socketState = state.get(ws);
 
-
+      
       errorManager.unregisterWebSocket(ws);
 
-
+      
       cleanupRateLimit(ws);
 
       if (socketState?.boardId) {
@@ -528,7 +547,7 @@ function startWs(httpServer)
         leaveRoom(ws, socketState.boardId);
       }
 
-
+      
       if (socketState?.pseudo) {
         logger.info("User disconnected", {
           pseudo: socketState.pseudo,
