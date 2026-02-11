@@ -1,99 +1,123 @@
 <!DOCTYPE html>
 <html lang="fr">
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kanban — Board</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kanban — Board</title>
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-</head>
+  </head>
 
-<body>
-  <!-- Vue Connexion -->
-  <div id="login-view" class="login-container">
-    <div class="login-card">
-      <h1>Kanban App</h1>
-      <p class="subtitle">Entrez votre pseudo et le nom du board</p>
+  <body>
+    <!-- Vue Connexion -->
+    <div id="login-view" class="login-container">
+      <div class="login-card">
+        <h1>Kanban App</h1>
+        <p class="subtitle">Entrez votre pseudo et le nom du board</p>
 
-      <div class="form-group">
-        <label>Pseudo</label>
+        <div class="form-group">
+          <label>Pseudo</label>
         <input id="pseudo" placeholder="Ex: Lucas" value="Lucas" />
-      </div>
+        </div>
 
-      <div class="form-group">
-        <label>Board ID</label>
-        <input id="board" placeholder="Ex: team1" value="team1" />
-      </div>
+        <div class="form-group">
+          <label>Board ID</label>
+          <input
+            id="board"
+            placeholder="Ex: team1"
+            value="team1"
+            maxlength="30"
+            required
+          />
+        </div>
 
-      <button id="connect" class="btn-primary">Rejoindre</button>
-      <div id="login-error" class="error-msg"></div>
+        <div class="form-group">
+          <label>Rôle</label>
+          <div class="role-selector">
+            <label class="role-card">
+              <input type="radio" name="role" value="user" checked />
+              <div class="role-card-content">
+                <span class="role-title">Utilisateur</span>
+                <span class="role-desc">Gère ses propres tâches</span>
+              </div>
+              <span class="role-check">✓</span>
+            </label>
+            <label class="role-card">
+              <input type="radio" name="role" value="admin" />
+              <div class="role-card-content">
+                <span class="role-title">Administrateur</span>
+                <span class="role-desc">Gère toutes les tâches</span>
+              </div>
+              <span class="role-check">✓</span>
+            </label>
+          </div>
+        </div>
+
+        <button id="connect" class="btn-primary">Rejoindre</button>
+        <div id="login-error" class="error-msg"></div>
+      </div>
     </div>
-  </div>
 
-  <!-- Vue Application (Kanban) -->
-  <div id="app-view" class="hidden">
-    <header class="app-header">
-      <h1>Kanban <span id="board-name-display"></span></h1>
-      <div class="header-controls">
-        <span id="status" class="status-badge">offline</span>
-        <button id="disconnect" class="btn-secondary">Déconnexion</button>
+    <!-- Vue Application (Kanban) -->
+    <div id="app-view" class="hidden">
+      <header class="app-header">
+        <h1>Kanban <span id="board-name-display"></span></h1>
+        <div class="header-controls">
+          <span id="status" class="status-badge">offline</span>
+          <button id="disconnect" class="btn-secondary">Déconnexion</button>
+        </div>
+      </header>
+
+      <!-- Bannière de conflit (cachée par défaut) -->
+      <div id="conflict-bar" class="conflict-bar hidden">
+        <span>⚠️ Cette tâche a été modifiée par un autre utilisateur.</span>
+        <div class="conflict-actions">
+          <button id="conflict-cancel">Annuler</button>
+          <button id="conflict-confirm">Confirmer</button>
+        </div>
       </div>
-    </header>
 
-    <!-- Bannière de conflit (cachée par défaut) -->
-    <div id="conflict-bar" class="conflict-bar hidden">
-      <span>⚠️ Cette tâche a été modifiée par un autre utilisateur.</span>
-      <div class="conflict-actions">
-        <button id="conflict-cancel">Annuler</button>
-        <button id="conflict-confirm">Confirmer</button>
-      </div>
-    </div>
-
-    <div class="toolbar">
-      <div class="add-task-group">
+      <div class="toolbar">
+        <div class="add-task-group">
         <input id="title" placeholder="Nouvelle tâche..." />
-        <button id="add" class="btn-primary">Ajouter</button>
+          <button id="add" class="btn-primary">Ajouter</button>
+        </div>
+        <div class="board-switch">
+          <label>Board :</label>
+          <select id="board-select" class="status-select"></select>
+        </div>
       </div>
-      <div class="board-switch">
-        <label>Board :</label>
-        <select id="board-select" class="status-select"></select>
+
+      <div class="kanban">
+        <div class="col">
+          <h3>À faire <span id="count-todo" class="count">0</span></h3>
+          <div id="todo" class="task-list"></div>
+        </div>
+        <div class="col">
+          <h3>En cours <span id="count-doing" class="count">0</span></h3>
+          <div id="doing" class="task-list"></div>
+        </div>
+        <div class="col">
+          <h3>Terminé <span id="count-done" class="count">0</span></h3>
+          <div id="done" class="task-list"></div>
+        </div>
       </div>
     </div>
 
-    <div class="kanban">
-      <div class="col">
-        <h3>À faire <span id="count-todo" class="count">0</span></h3>
-        <div id="todo" class="task-list"></div>
-      </div>
-      <div class="col">
-        <h3>En cours <span id="count-doing" class="count">0</span></h3>
-        <div id="doing" class="task-list"></div>
-      </div>
-      <div class="col">
-        <h3>Terminé <span id="count-done" class="count">0</span></h3>
-        <div id="done" class="task-list"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modale d'édition -->
-  <div id="modal" class="modal hidden">
-    <div class="modal-content">
-      <h3>Modifier la tâche</h3>
-      <label>Titre</label>
-      <input id="edit-title" type="text" />
+    <!-- Modale d'édition -->
+    <div id="modal" class="modal hidden">
+      <div class="modal-content">
+        <button id="modal-close" class="modal-close-btn">×</button>
+        <h3>Modifier la tâche</h3>
+        <label>Titre</label>
+      <input id="edit-title" type="text" maxlength="100" required />
       <label>Description</label>
-      <textarea id="edit-desc" rows="3"></textarea>
-      <div class="modal-buttons">
-        <button id="edit-cancel">Annuler</button>
-        <button id="edit-save">Valider</button>
-      </div>
+      <textarea id="edit-desc" rows="3" maxlength="100" placeholder="Description optionnelle..."></textarea>
     </div>
-  </div>
 
-  <script type="module" src="/src/main.js"></script>
-</body>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 
 </html>

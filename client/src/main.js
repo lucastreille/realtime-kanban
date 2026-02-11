@@ -1,8 +1,10 @@
 import './style.css';
+import "./toastManager.js";
 
 let ws;
 let boardId;
 let pseudo;
+let userRole = "user";
 const tasks = new Map();
 let editingTask = null;
 let conflictData = null;
@@ -10,28 +12,51 @@ const knownBoards = new Set();
 
 const $ = (id) => document.getElementById(id);
 
-function setStatus(s) {
+function setStatus(s, showToast = false) {
   const el = $("status");
   el.textContent = s;
 
   // Couleur selon l'état
-  if (s === "connected") el.style.color = "green";
-  else if (s === "offline") el.style.color = "red";
-  else if (s === "error") el.style.color = "orange";
+  if (s === "connected") {
+    el.style.color = "green";
+    if (showToast) {
+      window.toastManager.success("Connecté au serveur");
+    }
+  } else if (s === "offline") {
+    el.style.color = "red";
+    if (showToast) {
+      window.toastManager.warning("Déconnecté du serveur");
+    }
+  } else if (s === "error") {
+    el.style.color = "orange";
+    if (showToast) {
+      window.toastManager.error("Erreur de connexion");
+    }
+  }
 }
 
 function connect() {
-
   pseudo = $("pseudo").value;
   boardId = $("board").value;
 
-  ws = new WebSocket("ws://10.101.29.136:3000");
+  if (!pseudo.trim()) {
+    window.toastManager.warning("Veuillez saisir un pseudo");
+    return;
+  }
+
+  if (!boardId.trim()) {
+    window.toastManager.warning("Veuillez saisir un nom de tableau");
+    return;
+  }
+
+  ws = new WebSocket("ws://localhost:3000");
 
   // Pour connexion à une autre machine : new WebSocket("ws://10.3.201.190:3000");
+  //   ws = new WebSocket("ws://10.101.29.136:3000");
 
   ws.onopen = () => {
-
     setStatus("connected");
+    window.toastManager.success("Connecté au serveur");
 
     // Basculer l'affichage
     $("login-view").classList.add("hidden");
@@ -39,8 +64,11 @@ function connect() {
 
     $("add").disabled = false;
 
+    const selectedRole = document.querySelector('input[name="role"]:checked');
+    userRole = selectedRole ? selectedRole.value : "user";
+
     ws.send(JSON.stringify({
-      type: "auth:hello",
+        type: "auth:hello",
       data: { pseudo }
     }));
 
@@ -49,8 +77,20 @@ function connect() {
 
   };
 
-  ws.onclose = () => setStatus("offline");
-  ws.onerror = () => setStatus("error");
+  ws.onclose = (event) => {
+    setStatus("offline");
+
+    if (event.code !== 1000) {
+      window.toastManager.info("Déconnecté du serveur");
+    }
+  };
+
+  ws.onerror = (event) => {
+    setStatus("error");
+    window.toastManager.error("Impossible de se connecter au serveur", {
+      actions: [{ label: "Réessayer", action: "reconnect", primary: true }],
+    });
+  };
 
   ws.onmessage = (e) => handle(JSON.parse(e.data));
 }
@@ -86,7 +126,7 @@ function switchBoard(newBoardId) {
 function updateBoardSelect() {
   const sel = $("board-select");
   sel.innerHTML = "";
-  knownBoards.forEach(b => {
+  knownBoards.forEach((b) => {
     const opt = document.createElement("option");
     opt.value = b;
     opt.textContent = b;
@@ -96,13 +136,19 @@ function updateBoardSelect() {
 }
 
 function handle(msg) {
+  if (msg.type === "error" || msg.type === "system:error") {
+    window.toastManager.showSystemError(msg.data);
+    return;
+  }
 
   if (msg.type === "board:state") {
 
     tasks.clear();
-    msg.data.tasks.forEach(t => tasks.set(t.id, t));
+    msg.data.tasks.forEach((t) => tasks.set(t.id, t));
     render();
-
+    window.toastManager.success(
+      `Tableau "${boardId}" chargé (${msg.data.tasks.length} tâches)`,
+    );
   }
 
   if (msg.type === "task:created") {
@@ -113,6 +159,13 @@ function handle(msg) {
     tasks.set(task.id, task);
     render();
 
+    if (msg.data.by !== pseudo) {
+      window.toastManager.info(
+        `Nouvelle tâche "${task.title}" créée par ${msg.data.by}`,
+      );
+    } else {
+      window.toastManager.success("Tâche créée avec succès");
+    }
   }
 
   if (msg.type === "task:updated") {
@@ -123,6 +176,25 @@ function handle(msg) {
     tasks.set(task.id, task);
     render();
 
+    if (msg.data.by !== pseudo) {
+      window.toastManager.info(
+        `Tâche "${task.title}" modifiée par ${msg.data.by}`,
+      );
+    }
+  }
+
+  if (msg.type === "task:deleted") {
+    const taskTitle = tasks.get(msg.data.taskId)?.title || "Tâche";
+    tasks.delete(msg.data.taskId);
+    render();
+
+    if (msg.data.by !== pseudo) {
+      window.toastManager.info(
+        `Tâche "${taskTitle}" supprimée par ${msg.data.by}`,
+      );
+    } else {
+      window.toastManager.success("Tâche supprimée avec succès");
+    }
   }
 
   if (msg.type === "task:conflict") {
@@ -133,8 +205,17 @@ function handle(msg) {
     // Afficher la bannière
     $("conflict-bar").classList.remove("hidden");
 
+    window.toastManager.warning(
+      "Conflit détecté ! Une autre personne a modifié cette tâche",
+      {
+        duration: 0, 
+        actions: [
+          { label: "Annuler", action: "cancel_conflict" },
+          { label: "Forcer", action: "confirm_conflict", primary: true },
+        ],
+      },
+    );
   }
-
 }
 
 function render() {
@@ -171,6 +252,11 @@ function render() {
       info.className = "task-info";
       info.textContent = `${t._lastAction || "Modifié"} par ${t._lastEditBy}`;
       meta.appendChild(info);
+    } else if (t.createdBy) {
+      const info = document.createElement("span");
+      info.className = "task-info";
+      info.textContent = `Créé par ${t.createdBy}`;
+      meta.appendChild(info);
     }
 
     const version = document.createElement("span");
@@ -202,6 +288,16 @@ function render() {
     actions.appendChild(editBtn);
     actions.appendChild(select);
 
+    const canDelete = userRole === "admin" || t.createdBy === pseudo;
+    if (canDelete) {
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "🗑️";
+      deleteBtn.className = "btn-delete";
+      deleteBtn.title = "Supprimer la tâche";
+      deleteBtn.onclick = () => deleteTask(t);
+      actions.appendChild(deleteBtn);
+    }
+
     card.appendChild(title);
     if (t.description) card.appendChild(desc);
     card.appendChild(meta);
@@ -223,12 +319,24 @@ function addTask() {
   const title = $("title").value.trim();
 
   if (!title) {
+    window.toastManager.warning("Veuillez saisir un titre pour la tâche");
     return;
   }
 
+  if (title.length > 100) {
+    window.toastManager.warning(
+      "Le titre de la tâche est trop long (max 100 caractères)",
+    );
+    return;
+  }
+
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    window.toastManager.error("Connexion fermée, impossible de créer la tâche");
+    return;
+  }
 
   ws.send(JSON.stringify({
-    type: "task:create",
+      type: "task:create",
     data: { boardId, title }
   }));
 
@@ -239,18 +347,48 @@ function addTask() {
 let lastPatch = null;
 
 function moveTask(t, targetStatus) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    window.toastManager.error(
+      "Connexion fermée, impossible de déplacer la tâche",
+    );
+    return;
+  }
 
   lastPatch = { status: targetStatus };
 
   ws.send(JSON.stringify({
-    type: "task:update",
-    data: {
-      boardId,
-      taskId: t.id,
-      baseVersion: t.version,
-      patch: lastPatch
-    }
-  }));
+      type: "task:update",
+      data: {
+        boardId,
+        taskId: t.id,
+        baseVersion: t.version,
+        patch: lastPatch,
+      },
+    }),
+  );
+}
+
+function deleteTask(t) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    window.toastManager.error(
+      "Connexion fermée, impossible de supprimer la tâche",
+    );
+    return;
+  }
+
+  if (!confirm(`Voulez-vous vraiment supprimer la tâche "${t.title}" ?`)) {
+    return;
+  }
+
+  ws.send(
+    JSON.stringify({
+      type: "task:delete",
+      data: {
+        boardId,
+        taskId: t.id,
+      },
+    }),
+  );
 }
 
 // --- Modale d'édition ---
@@ -267,11 +405,41 @@ function closeModal() {
   $("modal").classList.add("hidden");
 }
 
+$("modal").onclick = (e) => {
+  if (e.target.id === "modal") {
+    closeModal();
+  }
+};
+
+$("modal-close").onclick = closeModal;
+
 function saveEdit() {
   if (!editingTask) return;
 
   const newTitle = $("edit-title").value.trim();
   const newDesc = $("edit-desc").value.trim();
+
+  if (!newTitle) {
+    window.toastManager.warning("Le titre ne peut pas être vide");
+    return;
+  }
+
+  if (newTitle.length > 100) {
+    window.toastManager.warning("Le titre est trop long (max 100 caractères)");
+    return;
+  }
+
+  if (newDesc.length > 500) {
+    window.toastManager.warning(
+      "La description est trop longue (max 500 caractères)",
+    );
+    return;
+  }
+
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    window.toastManager.error("Connexion fermée, impossible de sauvegarder");
+    return;
+  }
 
   // On construit le patch avec les champs modifiés
   const patch = {};
@@ -280,6 +448,7 @@ function saveEdit() {
 
   // Si rien n'a changé, on ferme simplement
   if (Object.keys(patch).length === 0) {
+    window.toastManager.info("Aucune modification détectée");
     closeModal();
     return;
   }
@@ -287,11 +456,11 @@ function saveEdit() {
   lastPatch = patch;
 
   ws.send(JSON.stringify({
-    type: "task:update",
-    data: {
-      boardId,
-      taskId: editingTask.id,
-      baseVersion: editingTask.version,
+      type: "task:update",
+      data: {
+        boardId,
+        taskId: editingTask.id,
+        baseVersion: editingTask.version,
       patch: lastPatch
     }
   }));
@@ -311,11 +480,11 @@ function confirmConflict() {
 
   const t = conflictData.current;
   ws.send(JSON.stringify({
-    type: "task:update",
-    data: {
-      boardId,
-      taskId: t.id,
-      baseVersion: t.version,
+      type: "task:update",
+      data: {
+        boardId,
+        taskId: t.id,
+        baseVersion: t.version,
       patch: lastPatch
     }
   }));
@@ -344,3 +513,29 @@ $("edit-save").onclick = saveEdit;
 $("edit-cancel").onclick = closeModal;
 $("conflict-confirm").onclick = confirmConflict;
 $("conflict-cancel").onclick = cancelConflict;
+
+document.addEventListener("toastAction", (event) => {
+  const { action } = event.detail;
+
+  switch (action) {
+    case "reconnect":
+      if (ws) {
+        ws.close();
+      }
+      setTimeout(() => {
+        connect();
+      }, 500);
+      break;
+
+    case "confirm_conflict":
+      confirmConflict();
+      break;
+
+    case "cancel_conflict":
+      cancelConflict();
+      break;
+
+    default:
+      console.log("Action de toast inconnue:", action);
+  }
+});

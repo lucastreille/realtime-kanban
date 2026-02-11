@@ -1,75 +1,122 @@
 const crypto = require("crypto");
+const config = require("../config");
 
 // boards: Map<boardId, { tasks: Map<taskId, task> }>
 const boards = new Map();
 
 function getBoard(boardId) {
-
-    if (!boards.has(boardId)) 
-    {
-        boards.set(boardId, { tasks: new Map() });
+  if (!boards.has(boardId)) {
+    if (boards.size >= config.maxBoardsTotal) {
+      return null;
     }
 
-    return boards.get(boardId);
+    boards.set(boardId, { tasks: new Map() });
+  }
 
+  return boards.get(boardId);
 }
 
 function snapshot(boardId) {
+  const board = getBoard(boardId);
+  if (!board) {
+    return null;
+  }
 
-    const b = getBoard(boardId);
-    return Array.from(b.tasks.values());
-
+  return Array.from(board.tasks.values());
 }
 
-function createTask(boardId, { title, description = "" }) {
+function createTask(
+  boardId,
+  { title, description = "", createdBy = "unknown" },
+) {
+  const board = getBoard(boardId);
 
-    const b = getBoard(boardId);
-    const id = crypto.randomUUID();
-    const now = Date.now();
+  if (!board) {
+    return { error: "board_limit_reached" };
+  }
 
-    const task = { 
-        id, 
-        title, 
-        description, 
-        status: "todo", 
-        version: 0, 
-        updatedAt: now 
-    };
+  if (board.tasks.size >= config.maxTasksPerBoard) {
+    return { error: "task_limit_reached" };
+  }
 
-    b.tasks.set(id, task);
+  const id = crypto.randomUUID();
+  const now = Date.now();
 
-    return task;
+  const task = {
+    id,
+    title,
+    description,
+    status: "todo",
+    version: 0,
+    updatedAt: now,
+    createdBy,
+  };
+
+  board.tasks.set(id, task);
+
+  return task;
 
 }
 
 function getTask(boardId, taskId) {
+  const board = getBoard(boardId);
+  if (!board) {
+    return null;
+  }
 
-    const b = getBoard(boardId);
-    return b.tasks.get(taskId) || null;
-
+  return board.tasks.get(taskId) || null;
 }
-
 
 function applyPatch(task, patch) {
+  if (typeof patch.title === "string" && patch.title.length > 0) {
+    task.title = patch.title;
+  }
 
-    if (typeof patch.title === "string") 
-    {
-        task.title = patch.title;
-    }
+  if (typeof patch.description === "string") {
+    task.description = patch.description;
+  }
 
-    if (typeof patch.description === "string") 
-    {
-        task.description = patch.description;
-    }
+  if (
+    typeof patch.status === "string" &&
+    ["todo", "doing", "done"].includes(patch.status)
+  ) {
+    task.status = patch.status;
+  }
 
-    if (typeof patch.status === "string") 
-    {
-        task.status = patch.status;
-    }
-
-    task.version += 1;
-    task.updatedAt = Date.now();
-
+  task.version += 1;
+  task.updatedAt = Date.now();
 }
 
-module.exports = { snapshot, createTask, getTask, applyPatch };
+function getBoardCount() {
+  return boards.size;
+}
+
+function getTaskCount(boardId) {
+  const board = boards.get(boardId);
+  return board ? board.tasks.size : 0;
+}
+
+function deleteTask(boardId, taskId) {
+  const board = boards.get(boardId);
+  if (!board) {
+    return { error: "board_not_found" };
+  }
+
+  const task = board.tasks.get(taskId);
+  if (!task) {
+    return { error: "task_not_found" };
+  }
+
+  board.tasks.delete(taskId);
+  return { success: true, task };
+}
+
+module.exports = {
+  snapshot,
+  createTask,
+  getTask,
+  applyPatch,
+  getBoardCount,
+  getTaskCount,
+  deleteTask,
+};
