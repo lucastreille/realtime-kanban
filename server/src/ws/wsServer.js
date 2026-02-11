@@ -233,8 +233,6 @@ function startWs(httpServer)
         }
 
         if (socketState.boardId) {
-
-          //Prévenir le système que l'on part
           broadcast(socketState.boardId, {
             type: "user:left",
             data: {
@@ -243,17 +241,15 @@ function startWs(httpServer)
               ts: Date.now(),
             },
           });
-          
           leaveRoom(ws, socketState.boardId);
-
         }
 
         socketState.boardId = data.boardId;
         joinRoom(ws, data.boardId);
 
-        const tasks = snapshot(data.boardId);
+        const result = snapshot(data.boardId);
 
-        if (tasks === null) {
+        if (result === null) {
           sendError(
             ws,
             ErrorTypes.BOARD_LIMIT_REACHED,
@@ -265,12 +261,30 @@ function startWs(httpServer)
           return;
         }
 
+        // Si c'est un nouveau board, broadcaster à tous
+        if (result.isNewBoard) {
+          for (const [roomBoardId, room] of rooms) {
+            for (const client of room) {
+              if (client.readyState === WebSocket.OPEN && client !== ws) {
+                client.send(JSON.stringify({
+                  type: "board:created",
+                  data: {
+                    boardId: data.boardId,
+                    createdBy: socketState.pseudo,
+                    ts: Date.now()
+                  }
+                }));
+              }
+            }
+          }
+        }
+
        ws.send(JSON.stringify({
         
             type: "board:state",
             data: {
               boardId: data.boardId,
-              tasks: tasks,
+              tasks: result.tasks,
               serverTs: Date.now(),
             },
           }),

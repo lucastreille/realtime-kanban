@@ -134,6 +134,9 @@ function switchBoard(newBoardId) {
   render();
   updateBoardSelect();
 
+  // Nettoyer tous les curseurs de l'ancien board
+  window.cursorManager.clearAllCursors();
+
   ws.send(JSON.stringify({ type: "board:join", data: { boardId } }));
 }
 
@@ -162,6 +165,20 @@ function handle(msg) {
       knownBoards.add(board.boardId);
     });
     updateBoardSelect();
+    return;
+  }
+
+  // Gérer la création d'un nouveau board
+  if (msg.type === "board:created") {
+    knownBoards.add(msg.data.boardId);
+    updateBoardSelect();
+    
+    // Notification si ce n'est pas nous qui l'avons créé
+    if (msg.data.createdBy !== pseudo) {
+      window.toastManager.info(
+        `Nouveau tableau "${msg.data.boardId}" créé par ${msg.data.createdBy}`
+      );
+    }
     return;
   }
 

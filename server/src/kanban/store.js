@@ -33,12 +33,17 @@ function getBoard(boardId) {
 }
 
 function snapshot(boardId) {
+  const wasNewBoard = !cache.has(boardId) && !db.boardExists(boardId);
+  
   const board = getBoard(boardId);
   if (!board) {
     return null;
   }
   
-  return Array.from(board.tasks.values());
+  return {
+    tasks: Array.from(board.tasks.values()),
+    isNewBoard: wasNewBoard
+  };
 }
 
 function createTask(
