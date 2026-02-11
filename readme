@@ -1,0 +1,398 @@
+# Kanban Collaboratif en Temps Réel
+
+Application Kanban collaborative permettant à plusieurs utilisateurs de travailler ensemble en temps réel via WebSocket.
+
+---
+
+## Fonctionnalités
+
+- Kanban boards avec colonnes : Todo, Doing, Done
+- Collaboration temps réel entre utilisateurs
+- Curseurs partagés pour voir la position des autres utilisateurs
+- Base de données SQLite pour la persistance des données
+- Synchronisation automatique lors de la reconnexion
+- Support de plusieurs boards indépendants
+- Gestion des conflits avec système de versions
+
+---
+
+## Technologies utilisées
+
+**Frontend**
+- Vanilla JavaScript
+- CSS3
+- WebSocket API
+
+**Backend**
+- Node.js
+- ws (WebSocket library)
+- better-sqlite3 (base de données)
+- Zod (validation des données)
+
+---
+
+## Architecture
+
+### Structure générale
+
+```
+client/                 # Frontend
+  src/
+    main.js            # Logique principale
+    cursorManager.js   # Gestion des curseurs partagés
+    toastManager.js    # Notifications
+    style.css          # Styles
+
+server/                # Backend
+  src/
+    index.js           # Point d'entrée
+    ws/
+      wsServer.js      # Serveur WebSocket
+      protocol.js      # Validation des messages
+      auth.js          # Authentification
+      errors.js        # Gestion des erreurs
+    kanban/
+      store.js         # Logique métier
+      database.js      # Accès base de données
+    config.js          # Configuration
+```
+
+### Flux de données
+
+```
+1. Client envoie un message via WebSocket
+2. Serveur valide le message (protocol.js)
+3. Serveur traite la logique (store.js)
+4. Serveur sauvegarde en DB (database.js)
+5. Serveur broadcast aux autres clients
+6. Tous les clients reçoivent la mise à jour
+```
+
+---
+
+## Installation
+
+### Prérequis
+
+- Node.js (v16 ou supérieur)
+- npm
+
+### Installation serveur
+
+```bash
+cd server
+npm install
+```
+
+### Installation client
+
+```bash
+cd client
+npm install
+```
+
+---
+
+## Démarrage
+
+### Lancer le serveur
+
+```bash
+cd server
+npm start
+```
+
+Le serveur démarre sur `http://localhost:3000`
+
+### Lancer le client
+
+```bash
+cd client
+npm run dev
+```
+
+Le client démarre sur `http://localhost:5173`
+
+---
+
+## Utilisation
+
+1. Ouvrir `http://localhost:5173` dans votre navigateur
+2. Saisir un pseudo
+3. Saisir un nom de board (ou en créer un nouveau)
+4. Cliquer sur "Se connecter"
+5. Créer des tâches, les déplacer, les modifier
+6. Ouvrir un autre onglet avec un autre pseudo pour tester la collaboration
+
+---
+
+## Base de données
+
+### Structure
+
+**Table boards**
+```sql
+boardId TEXT PRIMARY KEY
+createdAt INTEGER
+updatedAt INTEGER
+```
+
+**Table tasks**
+```sql
+id TEXT PRIMARY KEY
+boardId TEXT
+title TEXT
+description TEXT
+status TEXT (todo/doing/done)
+version INTEGER
+createdBy TEXT
+updatedAt INTEGER
+createdAt INTEGER
+```
+
+### Fichier de données
+
+Les données sont stockées dans `server/kanban.db`
+
+Pour sauvegarder : copier le fichier `kanban.db`
+
+---
+
+## WebSocket - Messages supportés
+
+### Client vers Serveur
+
+**Authentification**
+```json
+{
+  "type": "auth:hello",
+  "data": { "pseudo": "Alice" }
+}
+```
+
+**Rejoindre un board**
+```json
+{
+  "type": "board:join",
+  "data": { "boardId": "projet-alpha" }
+}
+```
+
+**Liste des boards**
+```json
+{
+  "type": "boards:list",
+  "data": {}
+}
+```
+
+**Créer une tâche**
+```json
+{
+  "type": "task:create",
+  "data": {
+    "boardId": "projet-alpha",
+    "title": "Faire le design"
+  }
+}
+```
+
+**Modifier une tâche**
+```json
+{
+  "type": "task:update",
+  "data": {
+    "boardId": "projet-alpha",
+    "taskId": "uuid",
+    "baseVersion": 2,
+    "patch": { "status": "doing" }
+  }
+}
+```
+
+**Supprimer une tâche**
+```json
+{
+  "type": "task:delete",
+  "data": {
+    "boardId": "projet-alpha",
+    "taskId": "uuid"
+  }
+}
+```
+
+**Position du curseur**
+```json
+{
+  "type": "cursor:move",
+  "data": {
+    "pseudo": "Alice",
+    "x": 100,
+    "y": 200
+  }
+}
+```
+
+### Serveur vers Client
+
+**État du board**
+```json
+{
+  "type": "board:state",
+  "data": {
+    "boardId": "projet-alpha",
+    "tasks": [...]
+  }
+}
+```
+
+**Tâche créée**
+```json
+{
+  "type": "task:created",
+  "data": {
+    "task": {...},
+    "by": "Alice"
+  }
+}
+```
+
+**Tâche modifiée**
+```json
+{
+  "type": "task:updated",
+  "data": {
+    "taskId": "uuid",
+    "before": {...},
+    "after": {...},
+    "by": "Alice"
+  }
+}
+```
+
+**Tâche supprimée**
+```json
+{
+  "type": "task:deleted",
+  "data": {
+    "taskId": "uuid",
+    "by": "Alice"
+  }
+}
+```
+
+**Conflit détecté**
+```json
+{
+  "type": "task:conflict",
+  "data": {
+    "taskId": "uuid",
+    "expectedVersion": 2,
+    "actualVersion": 3,
+    "current": {...}
+  }
+}
+```
+
+**Nouveau board créé**
+```json
+{
+  "type": "board:created",
+  "data": {
+    "boardId": "nouveau-board",
+    "createdBy": "Alice"
+  }
+}
+```
+
+**Utilisateur parti**
+```json
+{
+  "type": "user:left",
+  "data": {
+    "pseudo": "Alice",
+    "boardId": "projet-alpha"
+  }
+}
+```
+
+---
+
+## Gestion des conflits
+
+Le système utilise un numéro de version pour chaque tâche.
+
+**Scénario :**
+
+1. Alice charge la tâche (version 2)
+2. Bob charge la tâche (version 2)
+3. Alice modifie et envoie (baseVersion: 2)
+4. Serveur accepte et incrémente (version 3)
+5. Bob essaie de modifier (baseVersion: 2)
+6. Serveur rejette car version actuelle = 3
+7. Bob reçoit un message "task:conflict"
+8. Bob peut recharger et réessayer
+
+---
+
+## Système de rooms
+
+Les utilisateurs sont organisés par board :
+
+```
+rooms = Map {
+  "projet-alpha" → Set { ws_alice, ws_bob },
+  "projet-beta" → Set { ws_charlie, ws_david }
+}
+```
+
+Quand un événement se produit sur "projet-alpha", seuls Alice et Bob reçoivent le message.
+
+---
+
+## Optimisations
+
+**Cache serveur**
+- Les boards sont chargés en RAM au premier accès
+- Les accès suivants utilisent le cache (pas de requête DB)
+- Le cache est vidé au redémarrage du serveur
+
+**Throttling des curseurs**
+- Les positions sont envoyées seulement si le mouvement > 5px
+- Réduit de 80% le nombre de messages envoyés
+
+**Nettoyage automatique**
+- Les curseurs inactifs disparaissent après 10 secondes
+- Les rooms vides sont supprimées automatiquement
+
+---
+
+## Configuration
+
+Fichier `server/src/config.js` :
+
+```javascript
+maxBoardsTotal: 100           // Nombre max de boards
+maxTasksPerBoard: 1000        // Nombre max de tâches par board
+maxBoardIdLength: 50          // Longueur max du nom de board
+maxMessageSize: 10000         // Taille max d'un message WebSocket
+auth: {
+  minPseudoLength: 2          // Longueur min du pseudo
+  maxPseudoLength: 30         // Longueur max du pseudo
+}
+```
+
+
+---
+
+## Améliorations possibles
+
+- Ajouter un système d'authentification
+- Implémenter un historique des modifications (undo/redo)
+- Ajouter des pièces jointes aux tâches
+- Implémenter des permissions par board
+- Ajouter des labels et des filtres
+- Implémenter la recherche de tâches
+- Ajouter des notifications push
+- Implémenter le drag & drop pour déplacer les tâches
+
