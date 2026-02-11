@@ -220,7 +220,20 @@ function startWs(httpServer)
         }
 
         if (socketState.boardId) {
+
+          //Prévenir le système que l'on part
+          broadcast(socketState.boardId, {
+            type: "user:left",
+            data: {
+              pseudo: socketState.pseudo,
+              boardId: socketState.boardId,
+              ts: Date.now(),
+            },
+          });
+          
+          // 2. Puis quitter
           leaveRoom(ws, socketState.boardId);
+
         }
 
         socketState.boardId = data.boardId;
@@ -497,7 +510,7 @@ function startWs(httpServer)
 
       // Mouvements de curseur
       if (type === "cursor:move") {
-        
+
         // Broadcaster la position du curseur aux autres utilisateurs du board
         if (socketState.boardId) {
           broadcast(socketState.boardId, {
