@@ -74,6 +74,12 @@ function connect() {
       data: { pseudo }
     }));
 
+    // Charger la liste des boards existants
+    ws.send(JSON.stringify({
+      type: "boards:list",
+      data: {}
+    }));
+
     // Rejoindre le board
     switchBoard(boardId);
 
@@ -123,7 +129,7 @@ function switchBoard(newBoardId) {
   $("board-name-display").textContent = boardId;
 
   window.cursorManager.clearAllCursors();
-  
+
   tasks.clear();
   render();
   updateBoardSelect();
@@ -150,7 +156,16 @@ function handle(msg) {
     return;
   }
 
-  // Mouvements de curseur
+  // Gérer la liste des boards
+  if (msg.type === "boards:list") {
+    msg.data.boards.forEach(board => {
+      knownBoards.add(board.boardId);
+    });
+    updateBoardSelect();
+    return;
+  }
+
+  // Gérer les mouvements de curseur
   if (msg.type === "cursor:move") {
     // Ne pas afficher son propre curseur
     if (msg.data.pseudo !== pseudo) {
@@ -232,7 +247,7 @@ function handle(msg) {
     window.toastManager.warning(
       "Conflit détecté ! Une autre personne a modifié cette tâche",
       {
-        duration: 0,
+        duration: 0, 
         actions: [
           { label: "Annuler", action: "cancel_conflict" },
           { label: "Forcer", action: "confirm_conflict", primary: true },

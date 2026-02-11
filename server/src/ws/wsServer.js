@@ -206,6 +206,19 @@ function startWs(httpServer)
         return;
       }
 
+      // Liste des boards disponibles
+      if (type === "boards:list") {
+        const { getAllBoards } = require("../kanban/store");
+        const boards = getAllBoards();
+        
+        ws.send(JSON.stringify({
+          type: "boards:list",
+          data: { boards }
+        }));
+        
+        return;
+      }
+
       if (type === "board:join") {
         if (!canAccessBoard(socketState, data.boardId)) {
           sendError(
@@ -231,7 +244,6 @@ function startWs(httpServer)
             },
           });
           
-          // 2. Puis quitter
           leaveRoom(ws, socketState.boardId);
 
         }

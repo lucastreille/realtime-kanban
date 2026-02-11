@@ -77,7 +77,12 @@ const cursorMove = z.object({
   })
 });
 
-const schemas = [authHello, boardJoin, taskCreate, taskUpdate, taskDelete, cursorMove];
+const boardsList = z.object({
+  type: z.literal("boards:list"),
+  data: z.object({}).optional()
+});
+
+const schemas = [authHello, boardJoin, taskCreate, taskUpdate, taskDelete, cursorMove, boardsList];
 
 function parse(raw) {
 

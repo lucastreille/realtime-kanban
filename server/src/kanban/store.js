@@ -1,19 +1,35 @@
 const crypto = require("crypto");
 const config = require("../config");
+const db = require("./database");
 
-// boards: Map<boardId, { tasks: Map<taskId, task> }>
-const boards = new Map();
+// Cache en RAM pour les performances (optionnel mais recommandé)
+const cache = new Map();
 
 function getBoard(boardId) {
-  if (!boards.has(boardId)) {
-    if (boards.size >= config.maxBoardsTotal) {
-      return null;
+  if (!cache.has(boardId)) {
+    // Vérifier si le board existe en DB, sinon le créer
+    if (!db.boardExists(boardId)) {
+      // Vérifier les limites
+      if (db.getBoardCount() >= config.maxBoardsTotal) {
+        return null;
+      }
+      
+      // Créer le board en DB
+      db.createBoard(boardId);
     }
-
-    boards.set(boardId, { tasks: new Map() });
+    
+    // Charger les tâches depuis la DB
+    const tasks = db.getAllTasks(boardId);
+    const tasksMap = new Map();
+    
+    tasks.forEach(task => {
+      tasksMap.set(task.id, task);
+    });
+    
+    cache.set(boardId, { tasks: tasksMap });
   }
-
-  return boards.get(boardId);
+  
+  return cache.get(boardId);
 }
 
 function snapshot(boardId) {
@@ -21,7 +37,7 @@ function snapshot(boardId) {
   if (!board) {
     return null;
   }
-
+  
   return Array.from(board.tasks.values());
 }
 
@@ -29,31 +45,37 @@ function createTask(
   boardId,
   { title, description = "", createdBy = "unknown" },
 ) {
-  const board = getBoard(boardId);
-
-  if (!board) {
+  // Vérifier les limites
+  if (db.getBoardCount() >= config.maxBoardsTotal) {
     return { error: "board_limit_reached" };
   }
-
-  if (board.tasks.size >= config.maxTasksPerBoard) {
+  
+  if (db.getTaskCount(boardId) >= config.maxTasksPerBoard) {
     return { error: "task_limit_reached" };
   }
-
+  
   const id = crypto.randomUUID();
   const now = Date.now();
-
+  
   const task = {
     id,
+    boardId,
     title,
     description,
     status: "todo",
     version: 0,
     updatedAt: now,
+    createdAt: now,
     createdBy,
   };
-
+  
+  // Sauvegarder en DB
+  db.insertTask(task);
+  
+  // Mettre à jour le cache
+  const board = getBoard(boardId);
   board.tasks.set(id, task);
-
+  
   return task;
 
 }
@@ -63,52 +85,66 @@ function getTask(boardId, taskId) {
   if (!board) {
     return null;
   }
-
+  
   return board.tasks.get(taskId) || null;
 }
 
 function applyPatch(task, patch) {
+  const updates = {};
+  
   if (typeof patch.title === "string" && patch.title.length > 0) {
     task.title = patch.title;
+    updates.title = patch.title;
   }
-
+  
   if (typeof patch.description === "string") {
     task.description = patch.description;
+    updates.description = patch.description;
   }
-
+  
   if (
     typeof patch.status === "string" &&
     ["todo", "doing", "done"].includes(patch.status)
   ) {
     task.status = patch.status;
+    updates.status = patch.status;
   }
-
+  
   task.version += 1;
   task.updatedAt = Date.now();
+  
+  updates.version = task.version;
+  
+  // Sauvegarder en DB
+  db.updateTask(task.boardId, task.id, updates);
 }
 
 function getBoardCount() {
-  return boards.size;
+  return db.getBoardCount();
 }
 
 function getTaskCount(boardId) {
-  const board = boards.get(boardId);
-  return board ? board.tasks.size : 0;
+  return db.getTaskCount(boardId);
 }
 
 function deleteTask(boardId, taskId) {
-  const board = boards.get(boardId);
-  if (!board) {
-    return { error: "board_not_found" };
+  const result = db.deleteTask(boardId, taskId);
+  
+  if (result.error) {
+    return result;
   }
-
-  const task = board.tasks.get(taskId);
-  if (!task) {
-    return { error: "task_not_found" };
+  
+  // Supprimer du cache
+  const board = cache.get(boardId);
+  if (board) {
+    board.tasks.delete(taskId);
   }
+  
+  return result;
+}
 
-  board.tasks.delete(taskId);
-  return { success: true, task };
+function getAllBoards() {
+  return db.getAllBoards();
 }
 
 module.exports = {
@@ -119,4 +155,5 @@ module.exports = {
   getBoardCount,
   getTaskCount,
   deleteTask,
+  getAllBoards,
 };
