@@ -86,12 +86,14 @@ const schemas = [authHello, boardJoin, taskCreate, taskUpdate, taskDelete, curso
 
 function parse(raw) {
 
-    let msg; try { 
+  let msg;
+
+  try { 
     msg = JSON.parse(raw);
-    } 
-    catch 
-    { 
-        return { ok:false, err:"json" };
+  } 
+  catch 
+  { 
+    return { ok:false, err:"json" };
   }
 
   for (const s of schemas) {
@@ -100,16 +102,16 @@ function parse(raw) {
 
     if (r.success) {
       return {
-                ok:true, 
-                msg:r.data 
+        ok:true, 
+        msg:r.data 
+      }
     }
-        }
 
   }
 
   return {
-        ok:false, 
-        err:"schema" 
+    ok:false, 
+    err:"schema" 
   };
 
 }

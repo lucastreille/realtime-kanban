@@ -28,8 +28,8 @@ server.listen(config.port, () => {
     healthEndpoint: "/health",
   });
 
-  console.log(`🚀 Serveur Kanban démarré sur le port ${config.port}`);
-  console.log(`📊 Dashboard de santé : http://localhost:${config.port}/health`);
+  console.log(`Serveur Kanban démarré sur le port ${config.port}`);
+  console.log(`Dashboard de santé : http://localhost:${config.port}/health`);
 
   setInterval(
     () => {
@@ -41,13 +41,13 @@ server.listen(config.port, () => {
 
 server.on("error", (error) => {
   if (error.code === "EADDRINUSE") {
-    console.error(`❌ Erreur : Le port ${config.port} est déjà utilisé`);
+    console.error(`Erreur : Le port ${config.port} est déjà utilisé`);
     process.exit(1);
   } else {
     errorManager.logError("INTERNAL_ERROR", {
       serverError: error.message,
       code: error.code,
     });
-    console.error("❌ Erreur du serveur HTTP:", error);
+    console.error("Erreur du serveur HTTP:", error);
   }
 });
