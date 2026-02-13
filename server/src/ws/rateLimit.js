@@ -44,7 +44,7 @@ function checkRateLimit(ws) {
     stats.messagesThisSecond.length >= config.rateLimit.maxMessagesPerSecond
   ) {
     console.log(
-      `⚠️ Rate limit SECONDE dépassée: ${stats.messagesThisSecond.length}/${config.rateLimit.maxMessagesPerSecond} messages/seconde`,
+      `Rate limit SECONDE dépassée: ${stats.messagesThisSecond.length}/${config.rateLimit.maxMessagesPerSecond} messages/seconde`,
     );
     return {
       allowed: false,
@@ -57,7 +57,7 @@ function checkRateLimit(ws) {
     stats.messagesThisMinute.length >= config.rateLimit.maxMessagesPerMinute
   ) {
     console.log(
-      `⚠️ Rate limit MINUTE dépassée: ${stats.messagesThisMinute.length}/${config.rateLimit.maxMessagesPerMinute} messages/minute`,
+      `Rate limit MINUTE dépassée: ${stats.messagesThisMinute.length}/${config.rateLimit.maxMessagesPerMinute} messages/minute`,
     );
     return {
       allowed: false,
@@ -71,7 +71,7 @@ function checkRateLimit(ws) {
     stats.messagesThisMinute.length > 0
   ) {
     console.log(
-      `📊 Rate limit: ${stats.messagesThisMinute.length}/${config.rateLimit.maxMessagesPerMinute} messages/minute, ${stats.messagesThisSecond.length}/${config.rateLimit.maxMessagesPerSecond} messages/seconde`,
+      `Rate limit: ${stats.messagesThisMinute.length}/${config.rateLimit.maxMessagesPerMinute} messages/minute, ${stats.messagesThisSecond.length}/${config.rateLimit.maxMessagesPerSecond} messages/seconde`,
     );
   }
 

@@ -50,37 +50,39 @@ function leaveRoom(ws, boardId)
 {
   const room = rooms.get(boardId);
 
-    if (!room)
-    {
+  if (!room)
+  {
     return;
   }
 
   room.delete(ws);
 
-    if (room.size === 0)
-    {
+  if (room.size === 0)
+  {
     rooms.delete(boardId);
   }
 }
 
 function broadcast(boardId, payload)
 {
+
   const room = rooms.get(boardId);
 
-    if (!room)
-    {
+  if (!room)
+  {
     return;
   }
 
   const message = JSON.stringify(payload);
 
-    for (const client of room)
+  for (const client of room)
+  {
+    if (client.readyState === WebSocket.OPEN)
     {
-        if (client.readyState === WebSocket.OPEN)
-        {
       client.send(message);
     }
   }
+
 }
 
 
