@@ -1,11 +1,16 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const { drizzle } = require('drizzle-orm/better-sqlite3');
+const { eq, and, count, sql } = require('drizzle-orm');
+const schema = require('./schema');
+const { boards, tasks } = schema;
 
 // Créer/ouvrir la base de données
-const db = new Database(path.join(__dirname, '../../kanban.db'));
+const sqlite = new Database(path.join(__dirname, '../../kanban.db'));
+const db = drizzle(sqlite, { schema });
 
-// Créer les tables si elles n'existent pas
-db.exec(`
+// Créer les tables si elles n'existent pas (Gardé pour compatibilité immédiate sans migration)
+sqlite.exec(`
   CREATE TABLE IF NOT EXISTS boards (
     boardId TEXT PRIMARY KEY,
     createdAt INTEGER NOT NULL,
@@ -28,127 +33,134 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_boardId ON tasks(boardId);
 `);
 
-console.log('✅ Base de données initialisée');
+console.log('✅ Base de données initialisée (avec Drizzle)');
 
 // Fonctions pour manipuler les boards
 
 function createBoard(boardId) {
-  const stmt = db.prepare(`
-    INSERT OR IGNORE INTO boards (boardId, createdAt, updatedAt)
-    VALUES (?, ?, ?)
-  `);
-  
   const now = Date.now();
-  stmt.run(boardId, now, now);
-  
+
+  // Utiliser Drizzle avec insert().onConflictDoNothing() pour simuler INSERT OR IGNORE
+  db.insert(boards)
+    .values({
+      boardId,
+      createdAt: now,
+      updatedAt: now
+    })
+    .onConflictDoNothing()
+    .run();
+
   return { boardId, createdAt: now, updatedAt: now };
 }
 
 function getAllBoards() {
-  const stmt = db.prepare('SELECT * FROM boards');
-  return stmt.all();
+  return db.select().from(boards).all();
 }
 
 function boardExists(boardId) {
-  const stmt = db.prepare('SELECT boardId FROM boards WHERE boardId = ?');
-  return stmt.get(boardId) !== undefined;
+  const result = db.select({ boardId: boards.boardId })
+    .from(boards)
+    .where(eq(boards.boardId, boardId))
+    .get();
+
+  return result !== undefined;
 }
 
 // Fonctions pour manipuler les tâches
 
 function getAllTasks(boardId) {
-  const stmt = db.prepare('SELECT * FROM tasks WHERE boardId = ?');
-  return stmt.all(boardId);
+  return db.select()
+    .from(tasks)
+    .where(eq(tasks.boardId, boardId))
+    .all();
 }
 
 function getTask(boardId, taskId) {
-  const stmt = db.prepare('SELECT * FROM tasks WHERE boardId = ? AND id = ?');
-  return stmt.get(boardId, taskId) || null;
+  const result = db.select()
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.boardId, boardId),
+        eq(tasks.id, taskId)
+      )
+    )
+    .get();
+
+  return result || null;
 }
 
 function insertTask(task) {
-  const stmt = db.prepare(`
-    INSERT INTO tasks (id, boardId, title, description, status, version, createdBy, updatedAt, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  
-  stmt.run(
-    task.id,
-    task.boardId,
-    task.title,
-    task.description || '',
-    task.status || 'todo',
-    task.version || 0,
-    task.createdBy || 'unknown',
-    task.updatedAt,
-    task.createdAt || task.updatedAt
-  );
-  
+  db.insert(tasks).values({
+    id: task.id,
+    boardId: task.boardId,
+    title: task.title,
+    description: task.description || '',
+    status: task.status || 'todo',
+    version: task.version || 0,
+    createdBy: task.createdBy || 'unknown',
+    updatedAt: task.updatedAt,
+    createdAt: task.createdAt || task.updatedAt
+  }).run();
+
   return task;
 }
 
 function updateTask(boardId, taskId, updates) {
-  const fields = [];
-  const values = [];
-  
-  if (updates.title !== undefined) {
-    fields.push('title = ?');
-    values.push(updates.title);
-  }
-  
-  if (updates.description !== undefined) {
-    fields.push('description = ?');
-    values.push(updates.description);
-  }
-  
-  if (updates.status !== undefined) {
-    fields.push('status = ?');
-    values.push(updates.status);
-  }
-  
-  if (updates.version !== undefined) {
-    fields.push('version = ?');
-    values.push(updates.version);
-  }
-  
-  fields.push('updatedAt = ?');
-  values.push(Date.now());
-  
-  values.push(boardId, taskId);
-  
-  const stmt = db.prepare(`
-    UPDATE tasks 
-    SET ${fields.join(', ')}
-    WHERE boardId = ? AND id = ?
-  `);
-  
-  stmt.run(...values);
-  
+  const updateData = {};
+
+  if (updates.title !== undefined) updateData.title = updates.title;
+  if (updates.description !== undefined) updateData.description = updates.description;
+  if (updates.status !== undefined) updateData.status = updates.status;
+  if (updates.version !== undefined) updateData.version = updates.version;
+
+  updateData.updatedAt = Date.now();
+
+  db.update(tasks)
+    .set(updateData)
+    .where(
+      and(
+        eq(tasks.boardId, boardId),
+        eq(tasks.id, taskId)
+      )
+    )
+    .run();
+
   return getTask(boardId, taskId);
 }
 
 function deleteTask(boardId, taskId) {
   const task = getTask(boardId, taskId);
-  
+
   if (!task) {
     return { error: 'task_not_found' };
   }
-  
-  const stmt = db.prepare('DELETE FROM tasks WHERE boardId = ? AND id = ?');
-  stmt.run(boardId, taskId);
-  
+
+  db.delete(tasks)
+    .where(
+      and(
+        eq(tasks.boardId, boardId),
+        eq(tasks.id, taskId)
+      )
+    )
+    .run();
+
   return { success: true, task };
 }
 
 function getTaskCount(boardId) {
-  const stmt = db.prepare('SELECT COUNT(*) as count FROM tasks WHERE boardId = ?');
-  const result = stmt.get(boardId);
+  const result = db.select({ count: count() })
+    .from(tasks)
+    .where(eq(tasks.boardId, boardId))
+    .get();
+
   return result.count;
 }
 
 function getBoardCount() {
-  const stmt = db.prepare('SELECT COUNT(*) as count FROM boards');
-  const result = stmt.get();
+  const result = db.select({ count: count() })
+    .from(boards)
+    .get();
+
   return result.count;
 }
 
@@ -163,5 +175,5 @@ module.exports = {
   deleteTask,
   getTaskCount,
   getBoardCount,
-  db
+  db: sqlite // Exporter l'instance raw sqlite pour compatibilité si nécessaire
 };
